@@ -44,7 +44,7 @@ class MouseMove:
         if len(data) > 4 and data[4] == 'drag':
             self.drag = True
 
-    def run(self, unimportant):
+    def run(self, args):
         if self.drag:
             pyautogui.dragTo(self.x, self.y, self.time, button='left')
         else:
@@ -147,8 +147,11 @@ def parse_message(message):
 
 class InputSequence:
 
-    def __init__(self, moves=[], filename=None):
-        self.moves = moves
+    def __init__(self, moves=None, filename=None):
+        if moves is None:
+            self.moves = []
+        else:
+            self.moves = moves
         self.filename = filename
 
         if self.filename is not None:
@@ -162,7 +165,7 @@ class InputSequence:
         self.moves.append(move)
 
     def save(self, filename=None):
-        self.moves.sort()
+        self.moves.sort(key=lambda x: x[0])
         if filename is not None:
             self.filename = filename
         with open(self.filename, 'w') as f:
@@ -194,7 +197,7 @@ class InputSequence:
 
     def run(self):
         writer = keyboard.Controller()
-        self.moves.sort()
+        self.moves.sort(key=lambda x: x[0])
         prev_move_start = 0
         time_start = time.time()
         for move_start, move in self.moves:

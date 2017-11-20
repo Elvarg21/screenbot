@@ -45,6 +45,7 @@ class Recorder:
             self.active['mouse-move'] = MouseMove(time=time.time())
 
     def mouse_on_click(self, x, y, button, click):
+        print(x, y)
         if button != mouse.Button.left:
             return # not yet supported
         move_start = self.active['mouse-move'].time
