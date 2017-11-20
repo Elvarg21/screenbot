@@ -1,6 +1,0 @@
-mouse 500 500
-click 2
-mouse 90 150 drag
-mouse 33 180 2
-wait 3.4
-mouse 430 430

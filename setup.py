@@ -10,7 +10,7 @@ with open('screenbot/__init__.py') as f:
 setup(
     name='screenbot',
     version=version,
-    description='Your best friend and ',
+    description='This package will become your best friend.',
     url='',
     author='Elvarg21',
     author_email='',
