@@ -7,7 +7,7 @@ import pyautogui
 from pynput import mouse, keyboard
 
 
-from . import screen_threader
+#from . import screen_threader
 
 KEYBOARD_INPUT_SIGN = '$'
 DEFAULT_TIME_DELAY = 0.25
@@ -44,7 +44,7 @@ class MouseMove:
         if len(data) > 4 and data[4] == 'drag':
             self.drag = True
 
-    def run(self):
+    def run(self, unimportant):
         if self.drag:
             pyautogui.dragTo(self.x, self.y, self.time, button='left')
         else:
@@ -75,7 +75,7 @@ class MouseClick:
         if len(data[0]) > 5:
             self.click_count = int(data[0][5:])
 
-    def run(self):
+    def run(self, clicker):
         #pyautogui.click(clicks=self.click_count, interval=0.25)
         clicker = mouse.Controller()
         my_button = getattr(mouse.Button, self.button)
@@ -86,51 +86,51 @@ class MouseClick:
             clicker.release(my_button)
 
 
-'''
-class Wait:
-    def __init__(self, time=0):
-        self.time = time
-
-    def end(self, end_time):
-        self.time = end_time - self.time
-
-    def to_string(self):
-        return ' '.join(['wait', str(self.time)])
-
-    def from_string(self, string_data):
-        data = string_data.split()
-        self.time = float(data[1])
-
-    def run(self):
-        time.sleep(self.time)
-'''
-
 class KeyboardInput:
-    def __init__(self, message=None, input_sign=KEYBOARD_INPUT_SIGN):
+    def __init__(self, message=None, time=0, input_type='write', input_sign=KEYBOARD_INPUT_SIGN):
         self.message = message
         self.input_sign = input_sign
+        self.time = time
+        self.input_type = input_type
 
     def to_string(self):
-        return ''.join([self.input_sign, self.message])
+        return '{0}{1}{0}{2} {3}'.format(self.input_sign, self.message, self.input_type, self.time)
 
     def from_string(self, string_data):
         if string_data[0] != self.input_sign:
             raise ValueError('Keyboard input sign undetected')
-        self.message = string_data[1:]
+        data = string_data.split(self.input_sign)
+        self.message = data[1]
+        items = data[2].split()
+        if len(items) >= 1:
+            self.time = float(items[-1])
+        if len(items) >= 2:
+            self.input_type = items[0]
+        else:
+            self.input_type = 'write'
 
-    def run(self):
-        writer = keyboard.Controller()
+    def run(self, writer):
+        #writer = keyboard.Controller()
         message_parts = parse_message(self.message)
         is_word = True
         for msg in message_parts:
             if msg != '':
                 if is_word:
-                    writer.type(msg)
+                    if self.input_type == 'write':
+                        writer.type(msg)
+                    elif self.input_type == 'press':
+                        writer.press(msg)
+                    elif self.input_type == 'release':
+                        writer.release(msg)
                 else:
                     my_key = getattr(keyboard.Key, msg)
-                    writer.press(my_key)
-                    writer.release(my_key)
+                    if self.input_type == 'write' or self.input_type == 'press':
+                        writer.press(my_key)
+                    if self.input_type == 'write' or self.input_type == 'release':
+                        writer.release(my_key)
             is_word = not is_word
+
+        #time.sleep(self.time)
 
 
 def parse_message(message):
@@ -185,8 +185,6 @@ class InputSequence:
                     move = MouseMove()
                 elif items[1].startswith('click'):
                     move = MouseClick()
-                #elif items[1].startswith('wait'):
-                #    move = Wait()
                 elif items[1].startswith(KEYBOARD_INPUT_SIGN):
                     move = KeyboardInput()
                 else:
@@ -195,5 +193,16 @@ class InputSequence:
                 self.moves.append((time, move))
 
     def run(self):
-        screen_threader.threaded_run(self.moves)
+        writer = keyboard.Controller()
+        self.moves.sort()
+        prev_move_start = 0
+        time_start = time.time()
+        for move_start, move in self.moves:
+            #print(move_start - prev_move_start)
+            time.sleep(max((move_start - prev_move_start) - (time.time() - time_start), 0))
+            time_start = time.time()
+            move.run(writer)
+            prev_move_start = move_start
+        # threading fails big time :(
+        #screen_threader.threaded_run(self.moves)
 

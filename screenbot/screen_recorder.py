@@ -45,10 +45,13 @@ class Recorder:
             self.active['mouse-move'] = MouseMove(time=time.time())
 
     def mouse_on_click(self, x, y, button, click):
+        if button != mouse.Button.left:
+            return # not yet supported
         move_start = self.active['mouse-move'].time
         self.active['mouse-move'].end(x, y, time.time())
         self.moves.add((move_start - self.record_start, self.active['mouse-move']))
-
+        self.active['mouse-move'] = MouseMove(time=time.time(), drag=click)
+        '''
         name = 'button-' + button.name
         if click and name not in self.active:
             self.active[name] = MouseClick(button=button.name, time=time.time())
@@ -57,15 +60,7 @@ class Recorder:
             self.active[name].end(time.time())
             self.moves.add((click_start - self.record_start, self.active[name]))
             del self.active[name]
-
-        print(x, y, button, click)
         '''
-        if button == mouse.Button.left:
-            self.moves.add(screen_input.MouseMove(x=x, y=y, time=time.time()-self.time, drag=self.click))
-            self.time = time.time()
-            self.click = click'''
-
-        self.active['mouse-move'] = MouseMove(time=time.time())
 
     def mouse_on_scroll(self, x, y, horizontal_scroll, vertical_scroll):
         # print(x, y, horizontal_scroll, vertical_scroll)
@@ -75,20 +70,27 @@ class Recorder:
         if key == keyboard.Key.esc:
             self.stop_recording()
             return False
-        #self.moves.add(Wait(time.time() - self.time))
-        self.time = time.time()
         try:
             # print('alphanumeric key {0} pressed'.format(key))
             char = key.char
-            self.moves.add(KeyboardInput(char))
+            self.moves.add((time.time() - self.record_start, KeyboardInput(char, input_type='press')))
         except AttributeError:
             #print('special key {0} pressed'.format(key))
             name = key.name
-            self.moves.add(KeyboardInput('{' + name + '}'))
+            self.moves.add((time.time() - self.record_start, KeyboardInput('{' + name + '}', input_type='press')))
+        self.active['mouse-move'].time = time.time()
 
     def keyboard_on_release(self, key):
         # print('{0} released'.format(key))
-        pass
+        try:
+            # print('alphanumeric key {0} pressed'.format(key))
+            char = key.char
+            self.moves.add((time.time() - self.record_start, KeyboardInput(char, input_type='release')))
+        except AttributeError:
+            #print('special key {0} pressed'.format(key))
+            name = key.name
+            self.moves.add((time.time() - self.record_start, KeyboardInput('{' + name + '}', input_type='release')))
+        self.active['mouse-move'].time = time.time()
 
     def stop_recording(self):
         keyboard.Listener.stop(self.keyboard)
